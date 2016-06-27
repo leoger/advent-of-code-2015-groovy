@@ -6,26 +6,58 @@ input = "^><^>>>^<^v<v^^vv^><<^<><<vv^<>^<^v>^vv<>v><vv^^<>>^^^v<<vv><<^>^<^v<^>
          v [0,-1]
 */ 
 
-visits = [:]
-void record(int x, int y) {
-    //println "recording at (${x}, ${y})"
-    def key = "#${x}#${y}"
-    def prev = visits.get(key)
-    visits.put(key, (prev == null ? 0 : prev) + 1)
-    //println visits
-}
-
-x=0; y=0
-
-record(x,y)
-for (char ch: input.chars) {
+def posMove(ch, x, y) {
     switch (ch) {
         case '^': y += 1; break;
         case 'v': y -= 1; break;
         case '<': x -= 1; break;
         case '>': x += 1; break;
     }
-    record(x,y)
+    return [x,y]    
 }
 
-println visits​.keySet().size()
+void record(visitsMap, int x, int y) {
+    //println "recording at (${x}, ${y})"
+    def key = "#${x}#${y}"
+    def prev = visitsMap.get(key)
+    visitsMap.put(key, (prev == null ? 0 : prev) + 1)
+}
+
+// PART 1 SOLUTION
+def visits = [:]
+x=0; y=0
+record(visits, x, y)
+for (char ch: input.chars) {
+    (x,y) = posMove(ch, x,y)
+    record(visits, x, y)
+}
+
+println "Part 1: " + visits.keySet().size()
+
+
+// PART 2 SOLUTION
+
+// trampoline trick for tail recursion!
+// see http://mrhaki.blogspot.com/2011/04/groovy-goodness-recursion-with-closure.html
+def twoSantas
+twoSantas = { acc, input, pos1, pos2 ->
+    if (input.isEmpty()) {
+        return acc
+    } else {
+        pos1 = posMove(input.head(), *pos1)
+        record(acc, *pos1)
+        return twoSantas.trampoline(acc, input.tail(), pos2, pos1)
+    }
+}
+twoSantas = twoSantas.trampoline()
+
+visits2 = [:]
+record(visits2, 0, 0)
+println "Part 2: " + twoSantas(visits2, input.toList(), [0,0], [0,0]).keySet().size()
+
+// On day 3, I learned:
+// - String.toChars() returns char[], String.toList() returns List<C>
+// - ... and head() and tail() only work on List
+// - spread operator doesn't work on method calls. e.g. foo(*bar(1, 2))
+// - ... so if you want to do that, you will need an intermediate variable
+// - multi-valued return can be captured like in Python. e.g. (x,y) = twoValues(1,2,3)
